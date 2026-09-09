@@ -19,3 +19,8 @@ dist/
 .wrangler/
 .claude/
 .gemini/
+
+# Local multi-account tokens
+.tokens.json
+*.token
+*.secret

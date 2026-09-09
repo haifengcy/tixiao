@@ -23,7 +23,8 @@ const ACCOUNTS = {
     domain: 'https://volcbox.pages.dev',
     domainBadgeName: 'volcbox.pages.dev',
     cfProject: 'volcbox',
-    remote: 'haifengcy'
+    remote: 'haifengcy',
+    branch: 'haifengcy'
   },
   walkyufeng: {
     key: 'walkyufeng',
@@ -36,7 +37,8 @@ const ACCOUNTS = {
     domain: 'https://figma-volcbox.pages.dev',
     domainBadgeName: 'figma--volcbox.pages.dev',
     cfProject: 'figma-volcbox',
-    remote: 'walkyufeng'
+    remote: 'walkyufeng',
+    branch: 'main'
   }
 };
 
@@ -66,25 +68,20 @@ console.log(`========================================\n`);
 const readmePath = path.join(rootDir, 'README.md');
 let readme = fs.readFileSync(readmePath, 'utf-8');
 
-// Replace badge version & releases
 readme = readme.replace(/badge\/version-v[0-9.]+-blue\.svg\?style=flat-square\)\(https:\/\/github\.com\/[^/]+\/Figma-VolcBox\/releases\)/g,
   `badge/version-${versionTag}-blue.svg?style=flat-square)(${config.githubReleases})`);
 
-// Replace website badge
 readme = readme.replace(/badge\/website-[^/]+-orange\.svg\?style=flat-square\)\(https:\/\/[^)]+\)/g,
   `badge/website-${config.domainBadgeName}-orange.svg?style=flat-square)(${config.domain})`);
 
-// Replace quick links
 readme = readme.replace(/\[🌐 访问官方主页\]\([^)]+\) · \[📦 下载插件安装包 \(\.zip\)\]\([^)]+\) · \[🐛 提交反馈 \/ Issue\]\([^)]+\)/g,
   `[🌐 访问官方主页](${config.domain}) · [📦 下载插件安装包 (.zip)](${config.domain}/${zipFileName}) · [🐛 提交反馈 / Issue](${config.githubIssues})`);
 
-// Replace step 1
 readme = readme.replace(/直接下载最新 \[VolcBox_v[0-9.]+\.zip\]\([^)]+\)/g,
   `直接下载最新 [${zipFileName}](${config.domain}/${zipFileName})`);
 readme = readme.replace(/git clone https:\/\/github\.com\/[^/]+\/Figma-VolcBox\.git/g,
   `git clone ${config.githubUrl}.git`);
 
-// Replace footer links
 readme = readme.replace(/- 🔗 \*\*官方主页\*\*：\[https:\/\/[^\]]+\]\([^)]+\)/g,
   `- 🔗 **官方主页**：[${config.domain}](${config.domain})`);
 readme = readme.replace(/- 📦 \*\*Releases 发版\*\*：\[GitHub Releases\]\([^)]+\)/g,
@@ -106,7 +103,6 @@ if (fs.existsSync(path.join(rootDir, versionDir))) {
 const websiteHtmlPath = path.join(rootDir, 'website', 'index.html');
 let websiteHtml = fs.readFileSync(websiteHtmlPath, 'utf-8');
 
-// Replace GitHub links in header, hero, footer
 websiteHtml = websiteHtml.replace(/href="https:\/\/github\.com\/[^/]+\/Figma-VolcBox"/g, `href="${config.githubUrl}"`);
 websiteHtml = websiteHtml.replace(/href="https:\/\/github\.com\/[^/]+\/Figma-VolcBox\/issues"/g, `href="${config.githubIssues}"`);
 
@@ -123,17 +119,5 @@ console.log(`✅ Rebuilt ${zipFileName} and synced to website/${zipFileName}`);
 execSync(`git config user.name "${config.userName}"`, { cwd: rootDir });
 execSync(`git config user.email "${config.userEmail}"`, { cwd: rootDir });
 console.log(`✅ Set Git user to: ${config.userName} <${config.userEmail}>`);
-
-// 7. Cloudflare Wrangler Config Switch if available
-const wranglerConfigDir = path.join(process.env.HOME || '', 'Library', 'Preferences', '.wrangler', 'config');
-const accountToml = path.join(wranglerConfigDir, `${config.key}.toml`);
-const defaultToml = path.join(wranglerConfigDir, 'default.toml');
-
-if (fs.existsSync(accountToml)) {
-  fs.copyFileSync(accountToml, defaultToml);
-  console.log(`✅ Switched Cloudflare authentication to ${config.userEmail}`);
-} else {
-  console.log(`ℹ️  Note: Cloudflare profile '${config.key}.toml' not cached yet.`);
-}
 
 console.log(`\n🎉 Ecosystem switched to [${config.key}] successfully!\n`);
