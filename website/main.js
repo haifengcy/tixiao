@@ -176,47 +176,14 @@ const MockupViews = {
 
   color() {
     return `
-      <div class="mockup-section-header" style="padding-top: 4px; justify-content: space-between; align-items: center;">
-        <span class="mockup-section-title">快速预设色调 (一键全案自适应)</span>
-        <span class="mockup-section-hint">自适应换色</span>
+      <div class="mockup-section-header">
+        <span class="mockup-section-title">调色范围</span>
       </div>
 
-      <div class="mockup-setting-group" style="margin-bottom: 8px; padding: 8px 12px; display: flex; flex-direction: column; gap: 7px;">
-        <div style="font-size: 9.5px; color: var(--text-muted); font-weight: 600;">经典品牌与设计系统</div>
-        <div style="display: flex; gap: 5px; flex-wrap: wrap;">
-          <div class="tone-preset-pill" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; background: var(--bg-surface); border: 1px solid var(--border-deck); font-size: 9.5px; cursor: pointer;">
-            <div style="width: 10px; height: 10px; border-radius: 2px; background: #FF5500;"></div>
-            <span>火山橙</span>
-          </div>
-          <div class="tone-preset-pill" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; background: var(--bg-surface); border: 1px solid var(--border-deck); font-size: 9.5px; cursor: pointer;">
-            <div style="width: 10px; height: 10px; border-radius: 2px; background: #165DFF;"></div>
-            <span>科技蓝</span>
-          </div>
-          <div class="tone-preset-pill" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; background: var(--bg-surface); border: 1px solid var(--border-deck); font-size: 9.5px; cursor: pointer;">
-            <div style="width: 10px; height: 10px; border-radius: 2px; background: #00B42A;"></div>
-            <span>生机绿</span>
-          </div>
-          <div class="tone-preset-pill" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; background: var(--bg-surface); border: 1px solid var(--border-deck); font-size: 9.5px; cursor: pointer;">
-            <div style="width: 10px; height: 10px; border-radius: 2px; background: #14C9C9;"></div>
-            <span>薄荷青</span>
-          </div>
-          <div class="tone-preset-pill" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; background: var(--bg-surface); border: 1px solid var(--border-deck); font-size: 9.5px; cursor: pointer;">
-            <div style="width: 10px; height: 10px; border-radius: 2px; background: #722ED1;"></div>
-            <span>极光紫</span>
-          </div>
-          <div class="tone-preset-pill" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; background: var(--bg-surface); border: 1px solid var(--border-deck); font-size: 9.5px; cursor: pointer;">
-            <div style="width: 10px; height: 10px; border-radius: 2px; background: #F7BA1E;"></div>
-            <span>日落金</span>
-          </div>
-          <div class="tone-preset-pill" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; background: var(--bg-surface); border: 1px solid var(--border-deck); font-size: 9.5px; cursor: pointer;">
-            <div style="width: 10px; height: 10px; border-radius: 2px; background: #1D2129;"></div>
-            <span>极客黑</span>
-          </div>
-          <div class="tone-preset-pill" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; background: var(--bg-surface); border: 1px solid var(--border-deck); font-size: 9.5px; cursor: pointer;">
-            <div style="width: 10px; height: 10px; border-radius: 2px; background: #EB2F96;"></div>
-            <span>洋红粉</span>
-          </div>
-        </div>
+      <div class="mockup-segmented-control">
+        <button class="mockup-segment-btn active">全部色彩</button>
+        <button class="mockup-segment-btn">仅填充</button>
+        <button class="mockup-segment-btn">仅描边</button>
       </div>
 
       <div class="mockup-section-header" style="justify-content: space-between; align-items: center;">

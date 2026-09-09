@@ -2,14 +2,14 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-v1.0.0-blue.svg?style=flat-square)](https://github.com/haifengcy/Figma-VolcBox/releases)
-[![Website](https://img.shields.io/badge/website-volcbox.pages.dev-orange.svg?style=flat-square)](https://volcbox.pages.dev)
+[![Version](https://img.shields.io/badge/version-v1.0.1-blue.svg?style=flat-square)](https://github.com/walkyufeng-hue/Figma-VolcBox/releases)
+[![Website](https://img.shields.io/badge/website-figma--volcbox.pages.dev-orange.svg?style=flat-square)](https://figma-volcbox.pages.dev)
 [![Figma](https://img.shields.io/badge/Figma-Plugin_API-F24E1E?style=flat-square&logo=figma&logoColor=white)](https://www.figma.com)
 [![License](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
 
 **简单高效的 Figma 全能工具箱 · 开源免费 · 跨端云同步**
 
-[🌐 访问官方主页](https://volcbox.pages.dev) · [📦 下载插件安装包 (.zip)](https://volcbox.pages.dev/VolcBox_v1.0.0.zip) · [🐛 提交反馈 / Issue](https://github.com/haifengcy/Figma-VolcBox/issues)
+[🌐 访问官方主页](https://figma-volcbox.pages.dev) · [📦 下载插件安装包 (.zip)](https://figma-volcbox.pages.dev/VolcBox_v1.0.1.zip) · [🐛 提交反馈 / Issue](https://github.com/walkyufeng-hue/Figma-VolcBox/issues)
 
 </div>
 
@@ -35,10 +35,10 @@
 ## 🚀 极速安装使用（3 步上手）
 
 1. **获取插件安装包**：
-   - 直接下载最新 [VolcBox_v1.0.0.zip](https://volcbox.pages.dev/VolcBox_v1.0.0.zip) 并解压到本地文件夹；
+   - 直接下载最新 [VolcBox_v1.0.1.zip](https://figma-volcbox.pages.dev/VolcBox_v1.0.1.zip) 并解压到本地文件夹；
    - 或使用 Git 克隆本仓库：
      ```bash
-     git clone https://github.com/haifengcy/Figma-VolcBox.git
+     git clone https://github.com/walkyufeng-hue/Figma-VolcBox.git
      ```
 2. **在 Figma 中导入**：
    - 打开 Figma 任意文件，点击顶部菜单：`Plugins (插件)` ➔ `Development (开发)` ➔ `Import plugin from manifest...`；
@@ -63,9 +63,9 @@ VolcBox 为剪贴板直拷功能设计了双模自适应降级机制：
 
 ## 🌐 官方主页与生态
 
-- 🔗 **官方主页**：[https://volcbox.pages.dev](https://volcbox.pages.dev)
-- 📦 **Releases 发版**：[GitHub Releases](https://github.com/haifengcy/Figma-VolcBox/releases)
-- 💬 **问题反馈**：[GitHub Issues](https://github.com/haifengcy/Figma-VolcBox/issues)
+- 🔗 **官方主页**：[https://figma-volcbox.pages.dev](https://figma-volcbox.pages.dev)
+- 📦 **Releases 发版**：[GitHub Releases](https://github.com/walkyufeng-hue/Figma-VolcBox/releases)
+- 💬 **问题反馈**：[GitHub Issues](https://github.com/walkyufeng-hue/Figma-VolcBox/issues)
 
 ---
 

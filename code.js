@@ -683,12 +683,23 @@ const NodeHistoryManager = {
 
     // Case 1: The user has specific text layer(s) selected
     if (explicitNodes && explicitNodes.length > 0) {
+      const restoredNodeIds = new Set();
       for (const node of explicitNodes) {
         if (!node || node.type !== 'TEXT') continue;
         const history = this.historyMap.get(node.id);
         if (history && history.length > 0) {
           const prevState = history.pop();
           nodesToRestore.push({ node, state: prevState });
+          restoredNodeIds.add(node.id);
+        }
+      }
+      // Clean up transactions from transactionStack if all nodes in them have been reverted
+      if (restoredNodeIds.size > 0 && this.transactionStack.length > 0) {
+        for (let i = this.transactionStack.length - 1; i >= 0; i--) {
+          const tx = this.transactionStack[i];
+          if (tx.type === type && tx.nodeIds.every(id => restoredNodeIds.has(id))) {
+            this.transactionStack.splice(i, 1);
+          }
         }
       }
       // If none of the explicitly selected text nodes have history, do NOT touch other unselected nodes!
@@ -723,7 +734,6 @@ const NodeHistoryManager = {
     }
 
     let count = 0;
-    const restoredNodes = [];
     for (const { node, state } of nodesToRestore) {
       try {
         if (state.taggedText && state.styles) {
@@ -737,16 +747,13 @@ const NodeHistoryManager = {
           node.characters = state.text;
         }
         count++;
-        restoredNodes.push(node);
       } catch (e) {
         console.error('[Node Restore Error]', e);
       }
     }
 
-    if (restoredNodes.length > 0) {
-      try { figma.currentPage.selection = restoredNodes; } catch (e) {}
-    }
-
+    // Do NOT overwrite figma.currentPage.selection with leaf text nodes!
+    // Preserves the user's parent container / frame selection and enables smooth continuous undo.
     return { restored: count };
   }
 };
@@ -1022,10 +1029,33 @@ function sendToUI(response) {
 // =====================================================================
 const OriginalColorState = new Map();
 let cachedColorNodes = null;
+let currentColorVersion = 0;
 
-figma.on('selectionchange', () => {
+function revertActiveColorPreview() {
+  if (OriginalColorState.size === 0) {
+    cachedColorNodes = null;
+    return;
+  }
+  for (const [nodeId, original] of OriginalColorState.entries()) {
+    try {
+      const node = figma.getNodeById(nodeId);
+      if (node && !node.removed) {
+        if ('fills' in node && Array.isArray(original.fills)) {
+          node.fills = original.fills;
+        }
+        if ('strokes' in node && Array.isArray(original.strokes)) {
+          node.strokes = original.strokes;
+        }
+      }
+    } catch (e) {}
+  }
   OriginalColorState.clear();
   cachedColorNodes = null;
+}
+
+figma.on('selectionchange', () => {
+  currentColorVersion++;
+  revertActiveColorPreview();
 });
 
 function rgbToHsl(r, g, b) {
@@ -1121,8 +1151,8 @@ function adjustColorPaint(paint, offsetHue, offsetSat, offsetLit, protectNeutral
 
     // If protectNeutrals is on, preserve pure white, pure black, and low-saturation grays
     if (protectNeutrals) {
-      const isPureWhite = paint.color.r > 0.98 && paint.color.g > 0.98 && paint.color.b > 0.98;
-      const isPureBlack = paint.color.r < 0.05 && paint.color.g < 0.05 && paint.color.b < 0.05;
+      const isPureWhite = (paint.color.r > 0.96 && paint.color.g > 0.96 && paint.color.b > 0.96) || hsl.l > 0.97;
+      const isPureBlack = (paint.color.r < 0.08 && paint.color.g < 0.08 && paint.color.b < 0.08) || hsl.l < 0.04;
       const isNeutralGray = hsl.s < 0.08;
       if (isPureWhite || isPureBlack || isNeutralGray) {
         return paint; // Protect neutral background/text
@@ -1139,8 +1169,8 @@ function adjustColorPaint(paint, offsetHue, offsetSat, offsetLit, protectNeutral
     const newStops = paint.gradientStops.map(stop => {
       const hsl = rgbToHsl(stop.color.r, stop.color.g, stop.color.b);
       if (protectNeutrals) {
-        const isPureWhite = stop.color.r > 0.98 && stop.color.g > 0.98 && stop.color.b > 0.98;
-        const isPureBlack = stop.color.r < 0.05 && stop.color.g < 0.05 && stop.color.b < 0.05;
+        const isPureWhite = (stop.color.r > 0.96 && stop.color.g > 0.96 && stop.color.b > 0.96) || hsl.l > 0.97;
+        const isPureBlack = (stop.color.r < 0.08 && stop.color.g < 0.08 && stop.color.b < 0.08) || hsl.l < 0.04;
         const isNeutralGray = hsl.s < 0.08;
         if (isPureWhite || isPureBlack || isNeutralGray) {
           return stop;
@@ -1241,11 +1271,13 @@ function recolorPaintToTone(paint, baseHsl, targetHsl) {
 }
 
 function getAllColorNodes(nodes) {
-  const colorNodes = [];
+  const map = new Map();
   function walk(node) {
     if (('fills' in node && node.fills !== figma.mixed && Array.isArray(node.fills) && node.fills.length > 0) || 
         ('strokes' in node && node.strokes !== figma.mixed && Array.isArray(node.strokes) && node.strokes.length > 0)) {
-      colorNodes.push(node);
+      if (!map.has(node.id)) {
+        map.set(node.id, node);
+      }
     }
     if ('children' in node) {
       for (const child of node.children) {
@@ -1256,7 +1288,7 @@ function getAllColorNodes(nodes) {
   for (const n of (nodes || figma.currentPage.selection)) {
     walk(n);
   }
-  return colorNodes;
+  return Array.from(map.values());
 }
 
 function getCachedColorNodes() {
@@ -2149,8 +2181,12 @@ const Handlers = {
   },
 
   'translation/undo': async (requestId) => {
-    const textNodes = SelectionEngine.getTextNodes();
-    const result = await NodeHistoryManager.undo('translate', textNodes.length > 0 ? textNodes : null);
+    // If the user explicitly selected specific text layer(s) directly, undo only those.
+    // If user selected a Frame/Group or nothing, undo the most recent transaction cleanly!
+    const directSelection = figma.currentPage.selection;
+    const isExplicitTextOnly = directSelection.length > 0 && directSelection.every(n => n.type === 'TEXT');
+    const textNodes = isExplicitTextOnly ? directSelection : null;
+    const result = await NodeHistoryManager.undo('translate', textNodes);
 
     if (result.restored > 0) {
       figma.notify(`↩️ 已成功撤回，恢复 ${result.restored} 个图层至上一步`);
@@ -2223,8 +2259,10 @@ const Handlers = {
   },
 
   'fill/undo': async (requestId) => {
-    const textNodes = SelectionEngine.getTextNodes();
-    const result = await NodeHistoryManager.undo('fill', textNodes.length > 0 ? textNodes : null);
+    const directSelection = figma.currentPage.selection;
+    const isExplicitTextOnly = directSelection.length > 0 && directSelection.every(n => n.type === 'TEXT');
+    const textNodes = isExplicitTextOnly ? directSelection : null;
+    const result = await NodeHistoryManager.undo('fill', textNodes);
 
     if (result.restored > 0) {
       figma.notify(`↩️ 已撤回 ${result.restored} 个图层的填充`);
@@ -2841,7 +2879,10 @@ const Handlers = {
   },
 
   'color/preview': async (requestId, payload) => {
-    const { hue = 0, saturation = 0, lightness = 0, scope = 'all', protectNeutrals = true } = payload || {};
+    const { hue = 0, saturation = 0, lightness = 0, scope = 'all', protectNeutrals = true, version = 0 } = payload || {};
+    if (version > 0 && version < currentColorVersion) {
+      return; // Stale preview packet, ignore
+    }
     const targetNodes = getCachedColorNodes();
     
     for (let i = 0; i < targetNodes.length; i++) {
@@ -2857,53 +2898,67 @@ const Handlers = {
         OriginalColorState.set(node.id, original);
       }
       
-      if ('fills' in node && (scope === 'all' || scope === 'fill') && original.fills.length > 0) {
+      if ('fills' in node && original.fills.length > 0) {
         try {
-          node.fills = adjustPaints(original.fills, hue, saturation, lightness, protectNeutrals);
+          if (scope === 'all' || scope === 'fill') {
+            node.fills = adjustPaints(original.fills, hue, saturation, lightness, protectNeutrals);
+          } else {
+            node.fills = original.fills;
+          }
         } catch (e) {}
       }
       
-      if ('strokes' in node && (scope === 'all' || scope === 'stroke') && original.strokes.length > 0) {
+      if ('strokes' in node && original.strokes.length > 0) {
         try {
-          node.strokes = adjustPaints(original.strokes, hue, saturation, lightness, protectNeutrals);
+          if (scope === 'all' || scope === 'stroke') {
+            node.strokes = adjustPaints(original.strokes, hue, saturation, lightness, protectNeutrals);
+          } else {
+            node.strokes = original.strokes;
+          }
         } catch (e) {}
       }
     }
   },
 
   'color/reset': async (requestId) => {
-    const targetNodes = getAllColorNodes(figma.currentPage.selection);
-    for (const node of targetNodes) {
-      if (OriginalColorState.has(node.id)) {
-        const original = OriginalColorState.get(node.id);
-        if ('fills' in node && Array.isArray(original.fills)) {
-          try { node.fills = original.fills; } catch(e){}
-        }
-        if ('strokes' in node && Array.isArray(original.strokes)) {
-          try { node.strokes = original.strokes; } catch(e){}
-        }
-      }
-    }
-    OriginalColorState.clear();
+    currentColorVersion++;
+    revertActiveColorPreview();
     figma.notify('🔄 调色已重置');
     sendToUI({ type: 'task/completed', requestId, payload: { taskId: requestId, message: '已重置' } });
   },
 
   'color/apply': async (requestId, payload) => {
+    currentColorVersion++;
     const { hue = 0, saturation = 0, lightness = 0, scope = 'all', protectNeutrals = true } = payload || {};
-    const targetNodes = getAllColorNodes(figma.currentPage.selection);
+    const targetNodes = getCachedColorNodes();
     
     for (const node of targetNodes) {
-      if (!OriginalColorState.has(node.id) && (hue !== 0 || saturation !== 0 || lightness !== 0)) {
-        if ('fills' in node && (scope === 'all' || scope === 'fill') && Array.isArray(node.fills)) {
-          try { node.fills = adjustPaints(node.fills, hue, saturation, lightness, protectNeutrals); } catch(e){}
-        }
-        if ('strokes' in node && (scope === 'all' || scope === 'stroke') && Array.isArray(node.strokes)) {
-          try { node.strokes = adjustPaints(node.strokes, hue, saturation, lightness, protectNeutrals); } catch(e){}
-        }
+      if (node.removed) continue;
+      const original = OriginalColorState.get(node.id);
+      const baseFills = original ? original.fills : (('fills' in node && Array.isArray(node.fills)) ? node.fills : []);
+      const baseStrokes = original ? original.strokes : (('strokes' in node && Array.isArray(node.strokes)) ? node.strokes : []);
+
+      if ('fills' in node && baseFills.length > 0) {
+        try {
+          if (scope === 'all' || scope === 'fill') {
+            node.fills = adjustPaints(baseFills, hue, saturation, lightness, protectNeutrals);
+          } else if (original) {
+            node.fills = original.fills;
+          }
+        } catch (e) {}
+      }
+      if ('strokes' in node && baseStrokes.length > 0) {
+        try {
+          if (scope === 'all' || scope === 'stroke') {
+            node.strokes = adjustPaints(baseStrokes, hue, saturation, lightness, protectNeutrals);
+          } else if (original) {
+            node.strokes = original.strokes;
+          }
+        } catch (e) {}
       }
     }
     OriginalColorState.clear();
+    cachedColorNodes = null;
     figma.notify('🎨 调色已应用');
     sendToUI({ type: 'task/completed', requestId, payload: { taskId: requestId, message: '调色完成' } });
   },
