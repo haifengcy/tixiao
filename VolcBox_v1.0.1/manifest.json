@@ -8,13 +8,10 @@
     "figma"
   ],
   "documentAccess": "dynamic-page",
-  "permissions": [
-    "currentuser"
-  ],
   "networkAccess": {
     "allowedDomains": [
       "*"
     ],
-    "reasoning": "VolcBox requires network access to communicate with AI translation providers, Cloudflare cloud sync, and image compression services."
+    "reasoning": "VolcBox requires network access to communicate with AI translation providers (including user-configured custom AI endpoints like OpenAI and DeepSeek), Cloudflare cloud sync, and TinyPNG image compression services."
   }
 }

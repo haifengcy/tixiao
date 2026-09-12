@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    background: #08090d;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    color: #fff;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 64px 80px 50px;
+  }
+
+  /* Ambient Glows & Atmosphere */
+  .glow-top {
+    position: absolute;
+    top: -180px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 1200px;
+    height: 520px;
+    background: radial-gradient(ellipse at center, rgba(255, 95, 31, 0.28) 0%, rgba(255, 50, 0, 0.08) 55%, transparent 75%);
+    filter: blur(80px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .glow-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -40%);
+    width: 900px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(255, 107, 43, 0.14) 0%, rgba(120, 40, 200, 0.08) 45%, transparent 70%);
+    filter: blur(90px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .glow-left {
+    position: absolute;
+    top: 300px;
+    left: -120px;
+    width: 750px;
+    height: 750px;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.16) 0%, transparent 65%);
+    filter: blur(90px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .glow-right {
+    position: absolute;
+    top: 260px;
+    right: -120px;
+    width: 750px;
+    height: 750px;
+    background: radial-gradient(circle, rgba(244, 63, 94, 0.15) 0%, transparent 65%);
+    filter: blur(90px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Grid & Subtle Dot Pattern */
+  .grid-bg {
+    position: absolute;
+    inset: 0;
+    background-image: 
+      radial-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px),
+      linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    background-size: 36px 36px, 72px 72px, 72px 72px;
+    mask-image: radial-gradient(ellipse at 50% 50%, black 45%, transparent 85%);
+    -webkit-mask-image: radial-gradient(ellipse at 50% 50%, black 45%, transparent 85%);
+    z-index: 0;
+  }
+
+  /* Header Section */
+  .header {
+    text-align: center;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .badge-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 22px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+    font-size: 13.5px;
+    font-weight: 500;
+    color: #ffcfba;
+    letter-spacing: 0.8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    margin-bottom: 16px;
+    backdrop-filter: blur(10px);
+  }
+  .badge-pill .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ff6838;
+    box-shadow: 0 0 12px #ff6838;
+  }
+
+  .title-row {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 12px;
+  }
+  .brand-logo {
+    font-size: 56px;
+    filter: drop-shadow(0 6px 20px rgba(255, 107, 43, 0.6));
+    line-height: 1;
+  }
+  .brand-title {
+    font-size: 68px;
+    font-weight: 850;
+    letter-spacing: -2px;
+    background: linear-gradient(135deg, #ffffff 30%, #ffd0ba 70%, #ff6238 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  }
+  .version-chip {
+    font-size: 16px;
+    font-weight: 700;
+    padding: 5px 14px;
+    background: linear-gradient(135deg, rgba(255, 107, 43, 0.28), rgba(255, 60, 0, 0.16));
+    border: 1px solid rgba(255, 107, 43, 0.45);
+    color: #ff9e70;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(255, 107, 43, 0.2);
+  }
+
+  .subtitle {
+    font-size: 23px;
+    color: #9ba3be;
+    font-weight: 400;
+    letter-spacing: 0.3px;
+  }
+  .subtitle strong {
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  /* Center Showcase Container */
+  .showcase {
+    position: relative;
+    width: 100%;
+    max-width: 1540px;
+    height: 610px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+  }
+
+  /* Main Plugin Window */
+  .plugin-window {
+    width: 750px;
+    background: rgba(16, 18, 27, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    backdrop-filter: blur(35px);
+    -webkit-backdrop-filter: blur(35px);
+    border-radius: 22px;
+    box-shadow: 
+      0 35px 90px -15px rgba(0, 0, 0, 0.9),
+      0 0 0 1px rgba(255, 255, 255, 0.06),
+      0 0 60px rgba(255, 98, 36, 0.18);
+    overflow: hidden;
+    z-index: 5;
+    position: relative;
+  }
+
+  .window-topbar {
+    height: 50px;
+    background: rgba(255, 255, 255, 0.035);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+  }
+  .traffic-lights {
+    display: flex;
+    gap: 8px;
+  }
+  .traffic-lights span {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+  .light-r { background: #ff5f56; box-shadow: 0 0 6px rgba(255, 95, 86, 0.5); }
+  .light-y { background: #ffbd2e; }
+  .light-g { background: #27c93f; }
+
+  .window-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #e2e6f2;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .window-status {
+    font-size: 11.5px;
+    color: #4ade80;
+    background: rgba(74, 222, 128, 0.14);
+    border: 1px solid rgba(74, 222, 128, 0.3);
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-weight: 500;
+  }
+
+  /* Window Nav Tabs */
+  .window-tabs {
+    display: flex;
+    background: rgba(0, 0, 0, 0.25);
+    padding: 7px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    gap: 8px;
+  }
+  .tab-item {
+    flex: 1;
+    padding: 9px 6px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 500;
+    color: #8f97b0;
+    border-radius: 9px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .tab-item.active {
+    background: linear-gradient(135deg, rgba(255, 107, 43, 0.26), rgba(255, 70, 0, 0.16));
+    color: #ffa173;
+    border: 1px solid rgba(255, 107, 43, 0.4);
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(255, 107, 43, 0.15);
+  }
+
+  /* Window Body */
+  .window-body {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .lang-selector-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+  }
+  .lang-pill {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.055);
+    border: 1px solid rgba(255, 255, 255, 0.11);
+    border-radius: 11px;
+    padding: 11px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13.5px;
+    color: #e5e9f5;
+  }
+  .swap-icon {
+    color: #ff854d;
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .card-compare {
+    background: rgba(0, 0, 0, 0.38);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 14px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .compare-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .compare-label {
+    font-size: 11.5px;
+    color: #828ba3;
+    letter-spacing: 0.4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .compare-text {
+    font-size: 14.5px;
+    color: #d6dbec;
+    line-height: 1.55;
+  }
+  .highlight-bold {
+    color: #ffffff;
+    font-weight: 700;
+  }
+  .highlight-color {
+    color: #ff9d6c;
+    font-weight: 600;
+  }
+  .tag-badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 5px;
+    background: rgba(59, 130, 246, 0.18);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.32);
+    font-weight: 500;
+  }
+
+  .feature-tags-row {
+    display: flex;
+    gap: 10px;
+    padding: 0 4px;
+  }
+  .feature-tag-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #a1a9c3;
+  }
+  .feature-tag-item .check {
+    color: #10b981;
+    font-weight: bold;
+  }
+
+  .btn-action-primary {
+    background: linear-gradient(135deg, #ff6b2b 0%, #ff4500 100%);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 12px;
+    padding: 14px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    box-shadow: 0 8px 25px rgba(255, 107, 43, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  }
+
+  /* Floating Feature Cards Around Window */
+  .floating-card {
+    position: absolute;
+    background: rgba(20, 24, 35, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+    border-radius: 18px;
+    padding: 20px 22px;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.04);
+    z-index: 6;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .card-icon {
+    font-size: 21px;
+  }
+  .card-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #f3f6fc;
+  }
+
+  /* Card 1: Batch Data Fill (Left Top) */
+  .card-data {
+    left: 45px;
+    top: 50px;
+    width: 335px;
+  }
+  .data-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .data-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 10px;
+    padding: 9px 13px;
+    font-size: 13px;
+    color: #e2e6f4;
+  }
+  .data-tag {
+    font-size: 11px;
+    color: #a5b4fc;
+    background: rgba(99, 102, 241, 0.16);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-weight: 500;
+  }
+
+  /* Card 2: TinyPNG Compression Pool (Left Bottom) */
+  .card-compress {
+    left: 45px;
+    bottom: 35px;
+    width: 335px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .compress-circle {
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    border: 4px solid #10b981;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 14.5px;
+    font-weight: 800;
+    color: #34d399;
+    background: rgba(16, 185, 129, 0.12);
+    box-shadow: 0 0 16px rgba(16, 185, 129, 0.25);
+    flex-shrink: 0;
+  }
+  .compress-info h4 {
+    font-size: 14.5px;
+    font-weight: 600;
+    color: #f3f6fc;
+    margin-bottom: 4px;
+  }
+  .compress-info p {
+    font-size: 12px;
+    color: #8f98b2;
+    line-height: 1.45;
+  }
+
+  /* Card 3: HSL Color Adjuster (Right Top) */
+  .card-color {
+    right: 45px;
+    top: 50px;
+    width: 335px;
+  }
+  .slider-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .slider-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .slider-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11.5px;
+    color: #8f98b2;
+  }
+  .slider-track {
+    height: 8px;
+    border-radius: 999px;
+    position: relative;
+  }
+  .track-hue {
+    background: linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
+  }
+  .track-sat {
+    background: linear-gradient(to right, #4b5563, #f97316);
+  }
+  .track-lit {
+    background: linear-gradient(to right, #111827, #f97316, #ffffff);
+  }
+  .slider-thumb {
+    position: absolute;
+    top: -4px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 2px solid #000;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+  }
+
+  /* Card 4: ⌘+V Instant Copy (Right Bottom) */
+  .card-clipboard {
+    right: 45px;
+    bottom: 35px;
+    width: 335px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .key-badge {
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #ffd8c7;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+    flex-shrink: 0;
+    letter-spacing: 1px;
+  }
+  .clipboard-info h4 {
+    font-size: 14.5px;
+    font-weight: 600;
+    color: #f3f6fc;
+    margin-bottom: 4px;
+  }
+  .clipboard-info p {
+    font-size: 12px;
+    color: #8f98b2;
+    line-height: 1.45;
+  }
+
+  /* Footer Section */
+  .footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 48px;
+    z-index: 2;
+    font-size: 14px;
+    color: #8b93ac;
+    padding: 12px 32px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 999px;
+  }
+  .footer-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .footer-item span.icon {
+    font-size: 16px;
+  }
+</style>
+</head>
+<body>
+
+  <!-- Background Ambience -->
+  <div class="glow-top"></div>
+  <div class="glow-center"></div>
+  <div class="glow-left"></div>
+  <div class="glow-right"></div>
+  <div class="grid-bg"></div>
+
+  <!-- Header Section -->
+  <header class="header">
+    <div class="badge-pill">
+      <span class="dot"></span>
+      <span>FIGMA ALL-IN-ONE TOOLKIT · 开源免费 · 跨端云同步</span>
+    </div>
+    <div class="title-row">
+      <span class="brand-logo">🌋</span>
+      <h1 class="brand-title">VolcBox</h1>
+      <span class="version-chip">v1.0.2</span>
+    </div>
+    <p class="subtitle">
+      面向设计师与出海团队打造的 <strong>Figma 全能提效工具箱</strong>
+    </p>
+  </header>
+
+  <!-- Central Showcase Area -->
+  <div class="showcase">
+
+    <!-- Card 1: Batch Data Fill (Left Top) -->
+    <div class="floating-card card-data">
+      <div class="card-header">
+        <span class="card-icon">📝</span>
+        <div class="card-title">真实数据模拟填充</div>
+      </div>
+      <div class="data-list">
+        <div class="data-item">
+          <span>Sarah Jenkins</span>
+          <span class="data-tag">欧美高频人名</span>
+        </div>
+        <div class="data-item">
+          <span>Tokyo, Shibuya-ku</span>
+          <span class="data-tag">全球热门城市</span>
+        </div>
+        <div class="data-item">
+          <span>$1,299.00 USD</span>
+          <span class="data-tag">真实电商标价</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 2: TinyPNG Compression Pool (Left Bottom) -->
+    <div class="floating-card card-compress">
+      <div class="compress-circle">
+        <span>-68%</span>
+      </div>
+      <div class="compress-info">
+        <h4>TinyPNG 多 Key 轮询池</h4>
+        <p>突破 500 次限额 · 本地无损引擎兜底</p>
+      </div>
+    </div>
+
+    <!-- Main Plugin Window (Center) -->
+    <div class="plugin-window">
+      <div class="window-topbar">
+        <div class="traffic-lights">
+          <span class="light-r"></span>
+          <span class="light-y"></span>
+          <span class="light-g"></span>
+        </div>
+        <div class="window-title">
+          <span>🌋</span>
+          <span>VolcBox Figma Plugin</span>
+        </div>
+        <span class="window-status">● 运行中</span>
+      </div>
+
+      <div class="window-tabs">
+        <div class="tab-item active">🌐 智能翻译</div>
+        <div class="tab-item">📝 数据填充</div>
+        <div class="tab-item">🖼️ 图片压缩</div>
+        <div class="tab-item">🎨 全局调色</div>
+        <div class="tab-item">🛠️ 快捷工具</div>
+        <div class="tab-item">⚙️ 设置</div>
+      </div>
+
+      <div class="window-body">
+        <div class="lang-selector-row">
+          <div class="lang-pill">
+            <span>源语言：自动识别 (Auto Detect)</span>
+            <span>▾</span>
+          </div>
+          <span class="swap-icon">➔</span>
+          <div class="lang-pill">
+            <span>目标：🇨🇳 简体中文 (保持排版)</span>
+            <span>▾</span>
+          </div>
+        </div>
+
+        <div class="card-compare">
+          <div class="compare-row">
+            <div class="compare-label">
+              <span>原始文本 (保留局部富文本加粗与颜色)</span>
+              <span class="tag-badge">原生保真</span>
+            </div>
+            <div class="compare-text">
+              Accelerate your design workflow with <span class="highlight-bold">VolcBox</span>. Fast, <span class="highlight-color">reliable</span>, and free.
+            </div>
+          </div>
+          <div style="height: 1px; background: rgba(255,255,255,0.08);"></div>
+          <div class="compare-row">
+            <div class="compare-label">
+              <span>翻译后实时同步预览</span>
+              <span class="tag-badge" style="background: rgba(16,185,129,0.15); color: #34d399; border-color: rgba(16,185,129,0.3);">即时生效</span>
+            </div>
+            <div class="compare-text">
+              使用 <span class="highlight-bold">VolcBox</span> 极速提升设计效能。极致敏捷、<span class="highlight-color">稳定可靠</span>且完全开源免费。
+            </div>
+          </div>
+        </div>
+
+        <div class="feature-tags-row">
+          <div class="feature-tag-item"><span class="check">✓</span> 局部加粗 1:1 还原</div>
+          <div class="feature-tag-item"><span class="check">✓</span> 自定义颜色保留</div>
+          <div class="feature-tag-item"><span class="check">✓</span> 原地翻译 / 克隆画板</div>
+        </div>
+
+        <div class="btn-action-primary">
+          <span>⚡ 立即翻译选中画板 (保持富文本样式)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 3: HSL Color Tuning (Right Top) -->
+    <div class="floating-card card-color">
+      <div class="card-header">
+        <span class="card-icon">🎨</span>
+        <div class="card-title">画板全局调色 (免解组)</div>
+      </div>
+      <div class="slider-group">
+        <div class="slider-item">
+          <div class="slider-header">
+            <span>色相 (Hue)</span>
+            <span style="color: #ff854d; font-weight: 600;">+36°</span>
+          </div>
+          <div class="slider-track track-hue">
+            <div class="slider-thumb" style="left: 60%;"></div>
+          </div>
+        </div>
+        <div class="slider-item">
+          <div class="slider-header">
+            <span>饱和度 (Saturation)</span>
+            <span style="color: #ff854d; font-weight: 600;">+15%</span>
+          </div>
+          <div class="slider-track track-sat">
+            <div class="slider-thumb" style="left: 65%;"></div>
+          </div>
+        </div>
+        <div class="slider-item">
+          <div class="slider-header">
+            <span>明度 (Lightness)</span>
+            <span style="color: #ff854d; font-weight: 600;">-5%</span>
+          </div>
+          <div class="slider-track track-lit">
+            <div class="slider-thumb" style="left: 45%;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 4: ⌘+V Instant Copy (Right Bottom) -->
+    <div class="floating-card card-clipboard">
+      <div class="key-badge">⌘ + V</div>
+      <div class="clipboard-info">
+        <h4>系统剪贴板极速直拷</h4>
+        <p>多画板高清拼图 · 微信/飞书秒级直发</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Footer Section -->
+  <footer class="footer">
+    <div class="footer-item">
+      <span class="icon">🌐</span>
+      <span>全球 100+ 语言 AI 翻译</span>
+    </div>
+    <div class="footer-item">
+      <span class="icon">🛡️</span>
+      <span>像素级保留局部富文本样式</span>
+    </div>
+    <div class="footer-item">
+      <span class="icon">☁️</span>
+      <span>专属密钥跨端配置云同步</span>
+    </div>
+    <div class="footer-item">
+      <span class="icon">📦</span>
+      <span>开箱即用 · 零配置即开即走</span>
+    </div>
+  </footer>
+
+</body>
+</html>

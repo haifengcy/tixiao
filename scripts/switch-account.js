@@ -105,6 +105,10 @@ let websiteHtml = fs.readFileSync(websiteHtmlPath, 'utf-8');
 
 websiteHtml = websiteHtml.replace(/href="https:\/\/github\.com\/[^/]+\/Figma-VolcBox"/g, `href="${config.githubUrl}"`);
 websiteHtml = websiteHtml.replace(/href="https:\/\/github\.com\/[^/]+\/Figma-VolcBox\/issues"/g, `href="${config.githubIssues}"`);
+websiteHtml = websiteHtml.replace(/VolcBox_v[0-9.]+\.zip/g, zipFileName);
+websiteHtml = websiteHtml.replace(/v[0-9.]+\.zip/g, `${versionTag}.zip`);
+websiteHtml = websiteHtml.replace(/class="logo-badge">v[0-9.]+<\/span>/g, `class="logo-badge">${versionTag}</span>`);
+websiteHtml = websiteHtml.replace(/id="plugin-version">v[0-9.]+<\/span>/g, `id="plugin-version">${versionTag}</span>`);
 
 fs.writeFileSync(websiteHtmlPath, websiteHtml, 'utf-8');
 console.log(`✅ Updated website/index.html for ${config.key}`);
