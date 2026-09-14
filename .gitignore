@@ -24,3 +24,7 @@ dist/
 .tokens.json
 *.token
 *.secret
+
+# Distribution zip archives and version snapshot directories
+/*.zip
+/VolcBox_v*/
