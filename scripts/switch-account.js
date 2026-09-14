@@ -92,14 +92,7 @@ readme = readme.replace(/- 💬 \*\*问题反馈\*\*：\[GitHub Issues\]\([^)]+\
 fs.writeFileSync(readmePath, readme, 'utf-8');
 console.log(`✅ Updated root README.md for ${config.key}`);
 
-// 3. Sync to VolcBox_vX.Y.Z/README.md
-const dirReadmePath = path.join(rootDir, versionDir, 'README.md');
-if (fs.existsSync(path.join(rootDir, versionDir))) {
-  fs.writeFileSync(dirReadmePath, readme, 'utf-8');
-  console.log(`✅ Synced ${versionDir}/README.md`);
-}
-
-// 4. Update website/index.html
+// 3. Update website/index.html
 const websiteHtmlPath = path.join(rootDir, 'website', 'index.html');
 let websiteHtml = fs.readFileSync(websiteHtmlPath, 'utf-8');
 
@@ -113,11 +106,16 @@ websiteHtml = websiteHtml.replace(/id="plugin-version">v[0-9.]+<\/span>/g, `id="
 fs.writeFileSync(websiteHtmlPath, websiteHtml, 'utf-8');
 console.log(`✅ Updated website/index.html for ${config.key}`);
 
-// 5. Re-package Zip
+// 4. Re-package Zip directly to website/
 console.log(`📦 Re-packaging ${zipFileName}...`);
-execSync(`zip -r "${zipFileName}" manifest.json code.js ui.html README.md LICENSE "${versionDir}/"`, { cwd: rootDir, stdio: 'pipe' });
-execSync(`cp "${zipFileName}" "website/${zipFileName}"`, { cwd: rootDir, stdio: 'pipe' });
-console.log(`✅ Rebuilt ${zipFileName} and synced to website/${zipFileName}`);
+const webDir = path.join(rootDir, 'website');
+fs.readdirSync(webDir).forEach(f => {
+  if (f.startsWith('VolcBox_v') && f.endsWith('.zip') && f !== zipFileName) {
+    try { fs.unlinkSync(path.join(webDir, f)); } catch (e) {}
+  }
+});
+execSync(`zip -j "website/${zipFileName}" manifest.json code.js ui.html README.md LICENSE`, { cwd: rootDir, stdio: 'pipe' });
+console.log(`✅ Rebuilt website/${zipFileName}`);
 
 // 6. Update Git User config
 execSync(`git config user.name "${config.userName}"`, { cwd: rootDir });
