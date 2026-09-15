@@ -1179,6 +1179,10 @@ function adjustColorPaint(paint, offsetHue, offsetSat, offsetLit, protectNeutral
     if (newH < 0) newH += 360;
     let newS = Math.max(0, Math.min(1, hsl.s + offsetSat / 100));
     let newL = Math.max(0, Math.min(1, hsl.l + offsetLit / 100));
+    // Extreme color compensation: allow tinting pure black when protectNeutrals is off
+    if (!protectNeutrals && hsl.l < 0.05 && (offsetSat > 0 || offsetHue !== 0)) {
+      newL = Math.max(0.12, newL);
+    }
     const newRgb = hslToRgb(newH, newS, newL);
     return { ...paint, color: newRgb };
   } else if (paint.type && paint.type.startsWith('GRADIENT_') && Array.isArray(paint.gradientStops)) {
