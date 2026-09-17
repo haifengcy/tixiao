@@ -1340,7 +1340,7 @@
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
         </button>
       </div>
-      <div class="bottom-brand">VolcBox <span id="plugin-version">v1.0.6</span></div>
+      <div class="bottom-brand">VolcBox <span id="plugin-version">v1.0.7</span></div>
     </footer>
   </div>
 
@@ -5249,5 +5249,17 @@ Strict formatting and tag integrity rules:
     setInterval(checkLocalService, 3000);
     parent.postMessage({ pluginMessage: { type: 'selection/request', payload: {} } }, '*');
   </script>
+
+    // Global Keyboard Shortcuts (ESC & Cmd/Ctrl+Enter)
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const modals = document.querySelectorAll('.modal-backdrop, .dialog-overlay, .dropdown-menu.show');
+        modals.forEach(m => m.style.display = 'none');
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        const primaryBtn = document.querySelector('.btn-primary:not([disabled])');
+        if (primaryBtn) primaryBtn.click();
+      }
+    });
 </body>
 </html>
