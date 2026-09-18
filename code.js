@@ -2524,80 +2524,77 @@ const Handlers = {
     // Helper function to extract or export image data from a node
     async function processCandidateNode(node) {
       if (!node || node.removed) return;
-      let hasImageFill = false;
+      
+      let imgFill = null;
       if ('fills' in node && Array.isArray(node.fills)) {
-        for (const f of node.fills) {
-          if (f.type === 'IMAGE' && f.imageHash) {
-            hasImageFill = true;
-            try {
-              const image = figma.getImageByHash(f.imageHash);
-              if (image) {
-                const bytes = await image.getBytesAsync();
-                imageNodes.push({
-                  nodeId: node.id,
-                  nodeType: node.type,
-                  bytes,
-                  width: node.width,
-                  height: node.height,
-                  type: 'image_fill'
-                });
-              }
-            } catch (e) {
-              console.error('[Get Image Bytes Error]', e);
-            }
-            break;
+        imgFill = node.fills.find(f => f.type === 'IMAGE' && f.imageHash);
+      }
+
+      let rawBytes = null;
+      if (imgFill) {
+        try {
+          const image = figma.getImageByHash(imgFill.imageHash);
+          if (image) {
+            rawBytes = await image.getBytesAsync();
           }
+        } catch (e) {
+          console.error('[Get Image Bytes Error]', e);
         }
       }
 
-      if (!hasImageFill) {
-        try {
-          const bytes = await node.exportAsync({
-            format: 'PNG',
-            constraint: { type: 'SCALE', value: 1 }
-          });
-          imageNodes.push({
-            nodeId: node.id,
-            nodeType: node.type,
-            bytes,
-            width: node.width,
-            height: node.height,
-            type: 'exported_png'
-          });
-        } catch (e) {
-          console.error('[Export Node Error]', e);
+      let exportedBytes = null;
+      try {
+        let prevFills = null;
+        // Suppress any solid background fills during export so Figma exports on a true transparent canvas
+        if ('fills' in node && Array.isArray(node.fills)) {
+          const hasSolid = node.fills.some(f => f.type === 'SOLID');
+          if (hasSolid) {
+            prevFills = node.fills;
+            node.fills = node.fills.filter(f => f.type !== 'SOLID');
+          }
         }
+
+        const maxDim = Math.max(node.width, node.height);
+        const scale = maxDim > 3000 ? 1 : (maxDim > 1500 ? 1.5 : 2);
+        exportedBytes = await node.exportAsync({
+          format: 'PNG',
+          constraint: { type: 'SCALE', value: scale }
+        });
+
+        if (prevFills !== null) {
+          node.fills = prevFills;
+        }
+      } catch (e) {
+        console.error('[Export Node Error]', e);
+      }
+
+      // Primary bytes: rawBytes if scaleMode is FILL; otherwise exportedBytes rendering actual canvas bounds
+      const primaryBytes = (imgFill && imgFill.scaleMode === 'FILL' && rawBytes) ? rawBytes : (exportedBytes || rawBytes);
+
+      if (primaryBytes) {
+        imageNodes.push({
+          nodeId: node.id,
+          nodeType: node.type,
+          nodeName: node.name,
+          bytes: primaryBytes,
+          rawBytes: rawBytes || null,
+          exportedBytes: exportedBytes || null,
+          width: node.width,
+          height: node.height,
+          hasChildren: ('children' in node && node.children.length > 0),
+          isContainerFrame: (node.type === 'FRAME' || node.type === 'COMPONENT' || node.type === 'INSTANCE') && 'children' in node && node.children.length > 0,
+          scaleMode: imgFill ? imgFill.scaleMode : null,
+          type: imgFill ? 'image_fill' : 'rendered_node'
+        });
       }
     }
 
     for (const node of selection) {
-      // If user selected a container without image fills that has child layers with image fills, check children
-      if (node.type === 'FRAME' || node.type === 'GROUP' || node.type === 'SECTION') {
-        let foundDirectImageChild = false;
-        if ('findAll' in node) {
-          const imgChildren = node.findAll(c => {
-            if ('fills' in c && Array.isArray(c.fills)) {
-              return c.fills.some(f => f.type === 'IMAGE' && f.imageHash);
-            }
-            return false;
-          });
-          if (imgChildren.length > 0 && imgChildren.length <= 10) {
-            foundDirectImageChild = true;
-            for (const child of imgChildren) {
-              await processCandidateNode(child);
-            }
-          }
-        }
-        if (!foundDirectImageChild) {
-          await processCandidateNode(node);
-        }
-      } else {
-        await processCandidateNode(node);
-      }
+      await processCandidateNode(node);
     }
 
     if (imageNodes.length === 0) {
-      figma.notify('未找到有效的图片图层', { error: true });
+      figma.notify('未找到有效的图片或图层', { error: true });
       sendToUI({
         type: 'crop/completed',
         requestId,
@@ -2614,10 +2611,18 @@ const Handlers = {
   },
 
   'crop/apply-trimmed-image': async (requestId, payload) => {
-    const { nodeId, newBytes, origW, origH, cropX, cropY, cropW, cropH, noCropNeeded, type, nodeType, topTrim, bottomTrim, leftTrim, rightTrim } = payload || {};
+    const {
+      nodeId, newBytes, origW, origH, cropX, cropY, cropW, cropH,
+      noCropNeeded, type, nodeType, isContainerFrame,
+      topTrim, bottomTrim, leftTrim, rightTrim,
+      batchIndex = 0, batchTotal = 1
+    } = payload || {};
+
     const node = await figma.getNodeByIdAsync(nodeId);
     if (!node || node.removed || noCropNeeded || !newBytes) {
-      sendToUI({ type: 'crop/completed', requestId, payload: { trimmedCount: 0 } });
+      if (batchIndex === batchTotal - 1) {
+        sendToUI({ type: 'crop/completed', requestId, payload: { trimmedCount: 0 } });
+      }
       return;
     }
 
@@ -2635,42 +2640,57 @@ const Handlers = {
       const rad = (rot * Math.PI) / 180;
       const cos = Math.cos(rad);
       const sin = Math.sin(rad);
-      node.x += dx * cos - dy * sin;
-      node.y += dx * sin + dy * cos;
+      const shiftX = dx * cos - dy * sin;
+      const shiftY = dx * sin + dy * cos;
 
-      if (type === 'image_fill' && 'fills' in node && Array.isArray(node.fills)) {
-        const newFills = node.fills.map(f => {
-          if (f.type === 'IMAGE') {
-            return { ...f, imageHash: newImage.hash, scaleMode: 'FILL' };
-          }
-          return f;
-        });
-        node.fills = newFills;
+      if (isContainerFrame && 'children' in node && node.children.length > 0) {
+        // For container frames with children: adjust frame size and shift children so absolute canvas positions are preserved
+        node.x += shiftX;
+        node.y += shiftY;
         node.resize(newW, newH);
-      } else if ('fills' in node && node.type !== 'GROUP') {
-        node.fills = [{ type: 'IMAGE', scaleMode: 'FILL', imageHash: newImage.hash }];
-        node.resize(newW, newH);
+        // Clear any solid background fills on the frame so it remains transparent
+        if ('fills' in node && Array.isArray(node.fills)) {
+          node.fills = node.fills.filter(f => f.type !== 'SOLID');
+        }
+        for (const child of node.children) {
+          child.x -= dx;
+          child.y -= dy;
+        }
       } else {
-        // Group or container without direct fills
-        const parent = node.parent || figma.currentPage;
-        const index = parent.children.indexOf(node);
-        const rect = figma.createRectangle();
-        rect.name = node.name + ' (已裁切留白)';
-        rect.x = node.x;
-        rect.y = node.y;
-        rect.resize(newW, newH);
-        rect.fills = [{ type: 'IMAGE', scaleMode: 'FILL', imageHash: newImage.hash }];
-        parent.insertChild(Math.max(0, index), rect);
-        node.remove();
-        figma.currentPage.selection = [rect];
+        node.x += shiftX;
+        node.y += shiftY;
+        if ('resize' in node) {
+          node.resize(newW, newH);
+        }
+        if ('fills' in node && node.type !== 'GROUP') {
+          // Set ONLY the transparent image fill, removing any previous solid background
+          node.fills = [{ type: 'IMAGE', scaleMode: 'FILL', imageHash: newImage.hash }];
+        } else {
+          // Group or container without direct fills
+          const parent = node.parent || figma.currentPage;
+          const index = parent.children.indexOf(node);
+          const rect = figma.createRectangle();
+          rect.name = node.name + ' (已裁切留白)';
+          rect.x = node.x;
+          rect.y = node.y;
+          rect.resize(newW, newH);
+          rect.fills = [{ type: 'IMAGE', scaleMode: 'FILL', imageHash: newImage.hash }];
+          parent.insertChild(Math.max(0, index), rect);
+          node.remove();
+          figma.currentPage.selection = [rect];
+        }
       }
 
-      figma.notify(`✂️ PNG 透明边缘已精确裁切 (上:${topTrim || 0}px 下:${bottomTrim || 0}px 左:${leftTrim || 0}px 右:${rightTrim || 0}px)`);
-      sendToUI({ type: 'crop/completed', requestId, payload: { trimmedCount: 1 } });
+      figma.notify(`✂️ PNG 透明边缘已精确裁切 (上:${Math.round(topTrim * scaleY)}px 下:${Math.round(bottomTrim * scaleY)}px 左:${Math.round(leftTrim * scaleX)}px 右:${Math.round(rightTrim * scaleX)}px)`);
+      if (batchIndex === batchTotal - 1) {
+        sendToUI({ type: 'crop/completed', requestId, payload: { trimmedCount: batchTotal } });
+      }
     } catch (e) {
       console.error('[Apply Trim Error]', e);
       figma.notify('裁切应用失败: ' + e.message, { error: true });
-      sendToUI({ type: 'crop/completed', requestId, payload: { error: e.message } });
+      if (batchIndex === batchTotal - 1) {
+        sendToUI({ type: 'crop/completed', requestId, payload: { error: e.message } });
+      }
     }
   },
 

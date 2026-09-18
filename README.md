@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-v1.0.7-blue.svg?style=flat-square)](https://github.com/walkyufeng-hue/Figma-VolcBox/releases)
+[![Version](https://img.shields.io/badge/version-v1.0.8-blue.svg?style=flat-square)](https://github.com/walkyufeng-hue/Figma-VolcBox/releases)
 [![Website](https://img.shields.io/badge/website-figma--volcbox.pages.dev-orange.svg?style=flat-square)](https://figma-volcbox.pages.dev)
 [![Figma](https://img.shields.io/badge/Figma-Plugin_API-F24E1E?style=flat-square&logo=figma&logoColor=white)](https://www.figma.com)
 [![License](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
@@ -13,7 +13,7 @@
 
 <br>
 
-[🌐 访问官方主页](https://volcbox.pages.dev) · [📦 下载插件安装包 (.zip)](https://volcbox.pages.dev/VolcBox_v1.0.7.zip) · [🐛 提交反馈 / Issue](https://github.com/haifengcy/Figma-VolcBox/issues)
+[🌐 访问官方主页](https://volcbox.pages.dev) · [📦 下载插件安装包 (.zip)](https://volcbox.pages.dev/VolcBox_v1.0.8.zip) · [🐛 提交反馈 / Issue](https://github.com/haifengcy/Figma-VolcBox/issues)
 
 <br>
 
@@ -49,7 +49,7 @@
 ## 🚀 极速上手（3 步搞定）
 
 1. **下载安装包**：
-   直接下载最新 [VolcBox_v1.0.7.zip](https://volcbox.pages.dev/VolcBox_v1.0.7.zip) 并解压到本地（或 `git clone https://github.com/haifengcy/Figma-VolcBox.git`）；
+   直接下载最新 [VolcBox_v1.0.8.zip](https://volcbox.pages.dev/VolcBox_v1.0.8.zip) 并解压到本地（或 `git clone https://github.com/haifengcy/Figma-VolcBox.git`）；
 2. **在 Figma 中导入**：
    Figma 菜单：`Plugins` ➔ `Development` ➔ `Import plugin from manifest...`，选中目录中的 **`manifest.json`**；
 3. **即刻提效**：

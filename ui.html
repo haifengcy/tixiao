@@ -1340,7 +1340,7 @@
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
         </button>
       </div>
-      <div class="bottom-brand">VolcBox <span id="plugin-version">v1.0.7</span></div>
+      <div class="bottom-brand">VolcBox <span id="plugin-version">v1.0.8</span></div>
     </footer>
   </div>
 
@@ -3524,7 +3524,7 @@ echo "=========================================="
           btn.disabled = state.selection.totalSelected === 0;
           btn.textContent = '执行';
         }
-      }, 3500);
+      }, 6000);
     };
     const saveCompressionSettings = () => {
       parent.postMessage({ pluginMessage: { type: 'settings/save', payload: { compression: state.settings.compression } } }, '*');
@@ -4835,157 +4835,165 @@ Strict formatting and tag integrity rules:
           return;
         }
 
-        const ALPHA_THRESHOLD = 10; // Ignore faint invisible noise (< 4% opacity)
+        const ALPHA_NOISE_THRESHOLD = 15; // Ignore faint invisible noise (< 6% opacity)
+        let trimmedCount = 0;
 
-        for (const item of images) {
-          const { nodeId, bytes, type, nodeType } = item;
-          const blob = new Blob([bytes], { type: 'image/png' });
-          const url = URL.createObjectURL(blob);
-          const img = new Image();
+        function scanImageBounds(canvas, ctx, w, h) {
+          const imgData = ctx.getImageData(0, 0, w, h);
+          const data = imgData.data;
 
-          await new Promise((resolve) => {
-            img.onload = () => {
-              const w = img.width;
-              const h = img.height;
-              const canvas = document.createElement('canvas');
-              canvas.width = w;
-              canvas.height = h;
-              const ctx = canvas.getContext('2d', { willReadFrequently: true });
-              ctx.drawImage(img, 0, 0);
+          function isPixelContent(x, y) {
+            return data[(y * w + x) * 4 + 3] > ALPHA_NOISE_THRESHOLD;
+          }
 
-              const imgData = ctx.getImageData(0, 0, w, h);
-              const data = imgData.data;
-
-              // 1. Scan Top
-              let top = 0;
-              topLoop: for (let y = 0; y < h; y++) {
-                for (let x = 0; x < w; x++) {
-                  if (data[(y * w + x) * 4 + 3] > ALPHA_THRESHOLD) {
-                    top = y;
-                    break topLoop;
-                  }
-                }
-                top = h;
+          function rowHasContent(y) {
+            let count = 0;
+            const minRowPixels = Math.max(2, Math.floor(w * 0.003));
+            for (let x = 0; x < w; x++) {
+              if (isPixelContent(x, y)) {
+                count++;
+                if (data[(y * w + x) * 4 + 3] > 40) return true;
+                if (count >= minRowPixels) return true;
               }
+            }
+            return false;
+          }
 
-              // All transparent
-              if (top >= h) {
-                parent.postMessage({
-                  pluginMessage: {
-                    type: 'toast',
-                    payload: '💡 该图层为全透明图层，无需裁切'
-                  }
-                }, '*');
+          function colHasContent(x, top, bottom) {
+            let count = 0;
+            const colLen = bottom - top + 1;
+            const minColPixels = Math.max(2, Math.floor(colLen * 0.003));
+            for (let y = top; y <= bottom; y++) {
+              if (isPixelContent(x, y)) {
+                count++;
+                if (data[(y * w + x) * 4 + 3] > 40) return true;
+                if (count >= minColPixels) return true;
+              }
+            }
+            return false;
+          }
+
+          let top = 0;
+          while (top < h && !rowHasContent(top)) top++;
+          if (top >= h) return null; // all empty
+
+          let bottom = h - 1;
+          while (bottom >= top && !rowHasContent(bottom)) bottom--;
+
+          let left = 0;
+          while (left < w && !colHasContent(left, top, bottom)) left++;
+
+          let right = w - 1;
+          while (right >= left && !colHasContent(right, top, bottom)) right--;
+
+          const topTrim = top;
+          const bottomTrim = h - 1 - bottom;
+          const leftTrim = left;
+          const rightTrim = w - 1 - right;
+
+          return {
+            top, bottom, left, right,
+            topTrim, bottomTrim, leftTrim, rightTrim,
+            cropW: right - left + 1,
+            cropH: bottom - top + 1,
+            hasTrim: (topTrim > 0 || bottomTrim > 0 || leftTrim > 0 || rightTrim > 0)
+          };
+        }
+
+        for (let idx = 0; idx < images.length; idx++) {
+          const item = images[idx];
+          const { nodeId, bytes, exportedBytes, rawBytes, type, nodeType, isContainerFrame } = item;
+
+          async function tryTrimBytes(dataBytes) {
+            return new Promise((resolve) => {
+              const blob = new Blob([dataBytes], { type: 'image/png' });
+              const url = URL.createObjectURL(blob);
+              const img = new Image();
+              img.onload = () => {
+                const w = img.width;
+                const h = img.height;
+                const canvas = document.createElement('canvas');
+                canvas.width = w;
+                canvas.height = h;
+                const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                ctx.drawImage(img, 0, 0);
+
+                const bounds = scanImageBounds(canvas, ctx, w, h);
                 URL.revokeObjectURL(url);
-                state.isCropping = false;
-                const btn = document.getElementById('btn-trim-png');
-                if (btn) { btn.disabled = false; btn.textContent = '执行'; }
-                resolve();
-                return;
-              }
-
-              // 2. Scan Bottom
-              let bottom = h - 1;
-              bottomLoop: for (let y = h - 1; y >= top; y--) {
-                for (let x = 0; x < w; x++) {
-                  if (data[(y * w + x) * 4 + 3] > ALPHA_THRESHOLD) {
-                    bottom = y;
-                    break bottomLoop;
-                  }
+                if (!bounds || !bounds.hasTrim) {
+                  resolve(null);
+                  return;
                 }
-              }
 
-              // 3. Scan Left
-              let left = 0;
-              leftLoop: for (let x = 0; x < w; x++) {
-                for (let y = top; y <= bottom; y++) {
-                  if (data[(y * w + x) * 4 + 3] > ALPHA_THRESHOLD) {
-                    left = x;
-                    break leftLoop;
-                  }
-                }
-                left = w;
-              }
-
-              // 4. Scan Right
-              let right = w - 1;
-              rightLoop: for (let x = w - 1; x >= left; x--) {
-                for (let y = top; y <= bottom; y++) {
-                  if (data[(y * w + x) * 4 + 3] > ALPHA_THRESHOLD) {
-                    right = x;
-                    break rightLoop;
-                  }
-                }
-              }
-
-              const topTrim = top;
-              const bottomTrim = h - 1 - bottom;
-              const leftTrim = left;
-              const rightTrim = w - 1 - right;
-
-              const hasTrim = topTrim > 0 || bottomTrim > 0 || leftTrim > 0 || rightTrim > 0;
-
-              if (hasTrim) {
-                const cropW = right - left + 1;
-                const cropH = bottom - top + 1;
+                const { top, left, cropW, cropH, topTrim, bottomTrim, leftTrim, rightTrim } = bounds;
                 const cropCanvas = document.createElement('canvas');
                 cropCanvas.width = cropW;
                 cropCanvas.height = cropH;
                 const cropCtx = cropCanvas.getContext('2d');
+                // Lossless bit-for-bit crop: NEVER modify the image pixels!
                 cropCtx.drawImage(canvas, left, top, cropW, cropH, 0, 0, cropW, cropH);
 
                 cropCanvas.toBlob(async (cropBlob) => {
                   const newBytes = new Uint8Array(await cropBlob.arrayBuffer());
-                  parent.postMessage({
-                    pluginMessage: {
-                      type: 'crop/apply-trimmed-image',
-                      payload: {
-                        nodeId,
-                        newBytes,
-                        origW: w,
-                        origH: h,
-                        cropX: left,
-                        cropY: top,
-                        cropW,
-                        cropH,
-                        topTrim,
-                        bottomTrim,
-                        leftTrim,
-                        rightTrim,
-                        type,
-                        nodeType
-                      }
-                    }
-                  }, '*');
-                  URL.revokeObjectURL(url);
-                  resolve();
+                  resolve({
+                    newBytes,
+                    origW: w,
+                    origH: h,
+                    cropX: left,
+                    cropY: top,
+                    cropW,
+                    cropH,
+                    topTrim,
+                    bottomTrim,
+                    leftTrim,
+                    rightTrim
+                  });
                 }, 'image/png');
-              } else {
-                parent.postMessage({
-                  pluginMessage: {
-                    type: 'toast',
-                    payload: '💡 该图片四周已紧密贴边，没有多余透明边缘'
-                  }
-                }, '*');
+              };
+              img.onerror = () => {
                 URL.revokeObjectURL(url);
-                state.isCropping = false;
-                const btn = document.getElementById('btn-trim-png');
-                if (btn) {
-                  btn.disabled = false;
-                  btn.textContent = '执行';
+                resolve(null);
+              };
+              img.src = url;
+            });
+          }
+
+          // Try primary bytes first
+          let trimResult = await tryTrimBytes(bytes);
+          // If no trim and fallback exportedBytes exists, try exportedBytes
+          if (!trimResult && exportedBytes && exportedBytes !== bytes) {
+            trimResult = await tryTrimBytes(exportedBytes);
+          }
+
+          if (trimResult) {
+            trimmedCount++;
+            parent.postMessage({
+              pluginMessage: {
+                type: 'crop/apply-trimmed-image',
+                payload: {
+                  nodeId,
+                  ...trimResult,
+                  type,
+                  nodeType,
+                  isContainerFrame,
+                  batchIndex: idx,
+                  batchTotal: images.length
                 }
-                resolve();
               }
-            };
-            img.onerror = () => {
-              URL.revokeObjectURL(url);
+            }, '*');
+          } else {
+            if (idx === images.length - 1 && trimmedCount === 0) {
+              parent.postMessage({
+                pluginMessage: {
+                  type: 'toast',
+                  payload: '💡 该图片四周已紧密贴边，没有多余透明留白'
+                }
+              }, '*');
               state.isCropping = false;
               const btn = document.getElementById('btn-trim-png');
               if (btn) { btn.disabled = false; btn.textContent = '执行'; }
-              resolve();
-            };
-            img.src = url;
-          });
+            }
+          }
         }
       },
 
